@@ -24,7 +24,6 @@ public class Scanner_BLTE {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public Scanner_BLTE(MainActivity mainActivity, long scanPeriod, int signalStrength) {
         ma = mainActivity;
-
         mHandler = new Handler();
         this.scanPeriod = scanPeriod;
         this.signalStrength = signalStrength;
@@ -84,7 +83,7 @@ public class Scanner_BLTE {
                 @Override
                 public synchronized void onLeScan(final BluetoothDevice device, int rssi, final byte[] scanRecord) {
                     final int new_rssi = rssi;
-                    if ((rssi > signalStrength)) {
+                    if ((rssi > signalStrength) && device.getAddress().equals(MainActivity.selected_MAC)) {
                         mHandler.post(new Runnable() {
                             @Override
                             public void run() {

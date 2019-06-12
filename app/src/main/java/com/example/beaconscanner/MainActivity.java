@@ -8,6 +8,7 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
+import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
@@ -21,6 +22,10 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.opencsv.CSVWriter;
 
 import java.io.File;
@@ -30,6 +35,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
@@ -46,11 +52,21 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<String> macList = new ArrayList<>();
     private ArrayList<String> allValues = new ArrayList<>();
     final String MAC_ADDRESS ="CA:92:D2:A5:41:2B";
+    final String MAC_F = "E7:2B:EA:2F:95:C5";
+
     EditText macaddrees;
+    EditText distance;
+    List<Entry> entries;
+    LineChart chart;
+    public static int count = 0;
+
     public String data;
     public List<String[]> stringlist;
     private FileWriter mFileWriter;
+
     private static final int PERMISSION_REQUEST_CODE = 200;
+
+    public static String selected_MAC = " ";
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -68,6 +84,10 @@ public class MainActivity extends AppCompatActivity {
 
         stringlist.add(a);
 
+        chart = (LineChart) findViewById(R.id.chart);
+        chart.setBackgroundColor(0);
+        entries = new ArrayList<Entry>();
+
         if (!checkPermission()) {
             openActivity();
         } else {
@@ -79,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         macaddrees = (EditText)findViewById(R.id.mac_adrs);
-        EditText distance = (EditText)findViewById(R.id.distance_beacon);
+        distance = (EditText)findViewById(R.id.distance_beacon);
         ListView listView = (ListView)findViewById(R.id.list);
 
         int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -116,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (!mBTLeScanner.isScanning()) {
+                    selected_MAC = macaddrees.getText().toString();
                     macList.clear();
                     itrList.clear();
                     allValues.clear();
@@ -147,11 +168,23 @@ public class MainActivity extends AppCompatActivity {
 
 //            data = editString(data,"23",Integer.toString(rssi));
 
-            String[] a = new String[2];
-            a[0] = "23";
-            a[1] = Integer.toString(rssi);
+            if (address.equals(MAC_ADDRESS)) {
+                String[] a = new String[2];
+                a[0] = distance.getText().toString();
+                a[1] = Integer.toString(rssi);
+                stringlist.add(a);
+            }
+            count++;
 
-            stringlist.add(a);
+            for (BLTE_Device d : mBTDevicesArrayList) {
+                // turn your data into Entry objects
+                entries.add(new Entry(count, d.getRSSI()));
+            }
+
+            LineDataSet dataSet = new LineDataSet(entries, "Label");
+            LineData lineData = new LineData(dataSet);
+            chart.setData(lineData);
+            chart.invalidate(); // refresh
 
 //            System.out.println(device.getAddress());
 //            System.out.println(macaddrees.getText().toString());
@@ -162,10 +195,29 @@ public class MainActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
             mBTDevicesHashMap.get(address).setRSSI(rssi);
 
-            String[] a = new String[2];
-            a[0] = "23";
-            a[1] = Integer.toString(rssi);
-            stringlist.add(a);
+            System.out.println("target"+address);
+            System.out.println("result"+MAC_ADDRESS);
+
+            if (address.equals(MAC_ADDRESS)) {
+                System.out.println("insode the ifffffffffffffffffffffff");
+                String[] a = new String[2];
+                a[0] = distance.getText().toString();
+                a[1] = Integer.toString(rssi);
+                stringlist.add(a);
+            }
+
+            count++;
+
+            for (BLTE_Device d : mBTDevicesArrayList) {
+                // turn your data into Entry objects
+                entries.add(new Entry(count, d.getRSSI()));
+            }
+
+            LineDataSet dataSet = new LineDataSet(entries, "Label");
+            LineData lineData = new LineData(dataSet);
+            chart.setData(lineData);
+            chart.invalidate(); // refresh
+
         }
         adapter.notifyDataSetChanged();
     }
@@ -175,9 +227,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void writeCSV(List<String[]> a) throws IOException {
+        Random r = new Random();
         String baseDir = android.os.Environment.getExternalStorageDirectory().getAbsolutePath();
         Log.d("Write",baseDir);
-        String fileName = "AnalysisDatafinal.csv";
+        String fileName = "RSSIData_"+Integer.toString(r.nextInt(1000))+".csv";
         String filePath = baseDir + File.separator + fileName;
         File f = new File(filePath);
         CSVWriter writer;
@@ -199,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
         writer.close();
         Log.d("Write","written");
         System.out.println("writeeeeeeeeeeeeeeeeee");
+        Toast.makeText(this, (String)("File Saved.  "+fileName), Toast.LENGTH_LONG).show();
     }
 
     public String editString(String original,String value1, String value2){
