@@ -20,6 +20,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
@@ -34,7 +35,9 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
 
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
@@ -58,6 +61,12 @@ public class MainActivity extends AppCompatActivity {
     EditText distance;
     List<Entry> entries;
     LineChart chart;
+    TextView t;
+
+
+    Queue<Integer> queue = new LinkedList<>();
+    ArrayList<Float> movingAverage;
+
     public static int count = 0;
 
     public String data;
@@ -77,10 +86,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         stringlist = new ArrayList();
+        movingAverage = new ArrayList();
+        t = (TextView)findViewById(R.id.queue_display);
 
         String[] a = new String[2];
-        a[0] = "distance";
-        a[1] = "rssi";
+        a[0] = "distance_withMA";
+        a[1] = "rssi_withMA";
+
+        //Configure the Queue For moving Average
+        for (int i=0;i<10;i++){
+            queue.add(0);
+        }
 
         stringlist.add(a);
 
@@ -159,6 +175,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public synchronized void addDevice(BluetoothDevice device, int rssi) {
+
+
+        double r;
         String address = device.getAddress();
         if (!mBTDevicesHashMap.containsKey(address)) {
             BLTE_Device btleDevice = new BLTE_Device(device);
@@ -168,17 +187,45 @@ public class MainActivity extends AppCompatActivity {
 
 //            data = editString(data,"23",Integer.toString(rssi));
 
+            queue.remove();
+            queue.add(rssi);
+
+            float avg = 0;
+
+            for (int i:queue){
+                avg = avg + i;
+            }
+
+            avg = avg /queue.size();
+
+
+            System.out.println("");
+            System.out.println(avg);
+            System.out.println("");
+
+            String s = "";
+
+            for (int i:queue){
+                s = s+Integer.toString(i);
+            }
+
+            t.setText(s);
+
+            r = Math.pow(10.0,(-76.57-avg)/20);
+            movingAverage.add((float)r);
+
             if (address.equals(MAC_ADDRESS)) {
                 String[] a = new String[2];
                 a[0] = distance.getText().toString();
-                a[1] = Integer.toString(rssi);
+//              a[1] = Integer.toString(rssi);
+                a[1] = Float.toString(avg);
                 stringlist.add(a);
             }
             count++;
 
-            for (BLTE_Device d : mBTDevicesArrayList) {
+            for (Float f : movingAverage) {
                 // turn your data into Entry objects
-                entries.add(new Entry(count, d.getRSSI()));
+                entries.add(new Entry(count, f));
             }
 
             LineDataSet dataSet = new LineDataSet(entries, "Label");
@@ -190,28 +237,57 @@ public class MainActivity extends AppCompatActivity {
 //            System.out.println(macaddrees.getText().toString());
         }
         else {
-            System.out.println(device.getAddress());
-            System.out.println(macaddrees.getText().toString());
+//            System.out.println(device.getAddress());
+//            System.out.println(macaddrees.getText().toString());
             adapter.notifyDataSetChanged();
             mBTDevicesHashMap.get(address).setRSSI(rssi);
 
-            System.out.println("target"+address);
-            System.out.println("result"+MAC_ADDRESS);
+//            System.out.println("target"+address);
+//            System.out.println("result"+MAC_ADDRESS);
+
+            queue.remove();
+            queue.add(rssi);
+
+            float avg = 0;
+
+            for (int i:queue){
+                avg = avg + i;
+            }
+
+            avg = avg /queue.size();
+            System.out.println("");
+            System.out.println(avg);
+            System.out.println("");
+            for (int i:queue){
+                System.out.println(i);
+            }
+
+            String s = "";
+
+            for (int i:queue){
+                s = s+Integer.toString(i);
+            }
+
+            t.setText(s);
+
+            r = Math.pow(10.0,(-76.57-avg)/20);
+            movingAverage.add((float)r);
 
             if (address.equals(MAC_ADDRESS)) {
-                System.out.println("insode the ifffffffffffffffffffffff");
                 String[] a = new String[2];
                 a[0] = distance.getText().toString();
-                a[1] = Integer.toString(rssi);
+//              a[1] = Integer.toString(rssi);
+                a[1] = Float.toString(avg);
                 stringlist.add(a);
             }
 
             count++;
 
-            for (BLTE_Device d : mBTDevicesArrayList) {
+            for (Float f : movingAverage) {
                 // turn your data into Entry objects
-                entries.add(new Entry(count, d.getRSSI()));
+                entries.add(new Entry(count, f));
             }
+
 
             LineDataSet dataSet = new LineDataSet(entries, "Label");
             LineData lineData = new LineData(dataSet);
@@ -224,6 +300,12 @@ public class MainActivity extends AppCompatActivity {
 
     public void startScan(){
         mBTLeScanner.start();
+    }
+
+    public float convertRSSI(int rssi){
+        float new_val = 0;
+        new_val = (float) (Math.pow(10.0,(-76.57-rssi)/20));
+        return new_val;
     }
 
     public void writeCSV(List<String[]> a) throws IOException {

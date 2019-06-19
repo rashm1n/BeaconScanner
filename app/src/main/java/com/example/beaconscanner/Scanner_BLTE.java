@@ -16,10 +16,6 @@ public class Scanner_BLTE {
     private Handler mHandler;
     private long scanPeriod;
     private int signalStrength;
-
-
-
-
     //Constructor
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     public Scanner_BLTE(MainActivity mainActivity, long scanPeriod, int signalStrength) {
